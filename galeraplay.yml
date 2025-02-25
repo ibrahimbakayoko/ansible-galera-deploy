@@ -1,0 +1,80 @@
+---
+- name: Deploy Galera Cluster with MariaDB
+  hosts: all
+  become: true
+  vars:
+    # Variables internes au playbook
+    mysql_root_password: "root"  # Mot de passe root MariaDB
+    galera_nodes:
+      - node1
+      - node2
+
+    # Configuration Galera
+    galera_wsrep_cluster_address: "gcomm://node1,node2"
+
+  tasks:
+
+    - name: Install MariaDB and Galera
+      apt:
+        name:
+          - mariadb-server
+          - galera-4
+        state: present
+        update_cache: yes
+
+    - name: Configure Galera for node1
+      template:
+        src: galera.cnf.j2
+        dest: /etc/mysql/mariadb.conf.d/60-galera.cnf
+      when: inventory_hostname == "node1"
+      
+    - name: Configure Galera for node2
+      template:
+        src: galera.cnf.j2
+        dest: /etc/mysql/mariadb.conf.d/60-galera.cnf
+      when: inventory_hostname == "node2"
+
+#    - name: Set the root password for MariaDB on node1
+#      mysql_user:
+#        name: root
+#        password: "{{ mysql_root_password }}"
+#        host: localhost
+#        state: present
+#      when: inventory_hostname == "node1"
+
+#    - name: Set the root password for MariaDB on node2
+#      mysql_user:
+#        name: root
+#        password: "{{ mysql_root_password }}"
+#        host: localhost
+#        state: present
+#      when: inventory_hostname == "node2"
+
+    - name: Stop MariaDB on node2 before cluster initialization
+      systemd:
+        name: mariadb
+        state: stopped
+      when: inventory_hostname == "node2"
+
+    - name: Start MariaDB on node1 (for cluster init)
+      systemd:
+        name: mariadb
+        state: started
+      when: inventory_hostname == "node1"
+
+    - name: Initialize the Galera cluster on node1
+      command: galera_new_cluster
+      when: inventory_hostname == "node1"
+
+    - name: Start MariaDB on node2 (after cluster initialization)
+      systemd:
+        name: mariadb
+        state: started
+      when: inventory_hostname == "node2"
+
+    - name: Ensure Galera cluster is running on all nodes
+      command: mysql -u root -p{{ mysql_root_password }} -e "SHOW STATUS LIKE 'wsrep_cluster_size';"
+      register: galera_status
+      failed_when: galera_status.stdout.find("2") == -1
+      when: inventory_hostname == "node1" or inventory_hostname == "node2"
+      become: true
