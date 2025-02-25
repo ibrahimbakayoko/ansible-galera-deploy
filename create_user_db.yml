@@ -1,0 +1,53 @@
+---
+- name: Create a database and user with remote access
+  hosts: db
+  become: yes
+  vars:
+    mysql_root_password: "root"
+    mysql_user_password: "eduplateforme"
+    database_name: "eduplateforme"
+    database_user: "eduplateforme"
+  tasks:
+    - name: Ensure MariaDB is running
+      service:
+        name: mariadb
+        state: started
+
+    - name: Set password for root user
+      mysql_user:
+        name: "root"
+        password: "{{ mysql_root_password }}"
+        priv: '*.*:ALL,GRANT'
+        host: 'localhost'
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        state: present
+
+    - name: Create a database
+      mysql_db:
+        name: "{{ database_name }}"
+        state: present
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+
+    - name: Create a database user with remote access
+      mysql_user:
+        name: "{{ database_user }}"
+        password: "{{ mysql_user_password }}"
+        priv: "{{ database_name }}.*:ALL"
+        host: '%'
+        state: present
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+
+    - name: Grant all privileges to the new user
+      mysql_user:
+        name: "{{ database_user }}"
+        password: "{{ mysql_user_password }}"
+        priv: "{{ database_name }}.*:ALL"
+        host: '%'
+        state: present
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        login_unix_socket: /var/run/mysqld/mysqld.sock
