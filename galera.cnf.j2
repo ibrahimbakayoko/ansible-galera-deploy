@@ -1,7 +1,7 @@
 [mysqld]
 wsrep_on=ON
 wsrep_provider=/usr/lib/galera/libgalera_smm.so
-wsrep_cluster_address="gcomm://192.168.1.168,192.168.1.169"
+wsrep_cluster_address="gcomm://192.168.27.132,192.168.27.117"
 wsrep_cluster_name="my_cluster"
 wsrep_node_address="{{ ansible_host }}"
 wsrep_node_name="{{ inventory_hostname }}"

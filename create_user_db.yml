@@ -13,6 +13,12 @@
         name: mariadb
         state: started
 
+    - name: Install PyMySQL for MySQL modules
+      apt:
+        name: python3-pymysql
+        state: present
+        update_cache: yes
+
     - name: Set password for root user
       mysql_user:
         name: "root"
